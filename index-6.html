@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Manken Giydir</title>
+<style>
+  :root{
+    --bg:#eceae6; --panel:#ffffff; --text:#1f1f1f; --muted:#6b6b6b;
+    --line:#e2e0dc; --accent:#3d5afe; --accent-soft:#e8ecff; --card:#f7f6f3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1b1c1f; --panel:#26272b; --text:#f1f1f1; --muted:#a2a2a8;
+      --line:#35363b; --accent:#7c8dff; --accent-soft:#2e3252; --card:#2e2f34; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #app{display:flex;height:100%;width:100%}
+  #stage{position:relative;flex:1;min-width:0;min-height:0}
+  #stage canvas{display:block;width:100%;height:100%;touch-action:none}
+  #views{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);z-index:3}
+  #views button{border:0;background:transparent;color:var(--text);padding:8px 14px;
+    border-radius:8px;font-size:14px;cursor:pointer}
+  #views button:hover{background:var(--accent-soft)}
+  #hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;
+    font-size:12px;color:var(--muted);pointer-events:none}
+  #status{position:absolute;top:64px;left:12px;right:12px;margin:auto;max-width:440px;display:none;
+    background:#fff4e5;color:#6b3d00;border:1px solid #f3c98b;border-radius:10px;padding:10px 12px;
+    font-size:13px;line-height:1.4;z-index:5}
+  #status.show{display:block}
+  #status.ok{background:#e9f7ee;color:#1d5b33;border-color:#a6d8b8}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:14px;pointer-events:none}
+
+  #panel{width:340px;background:var(--panel);border-left:1px solid var(--line);
+    overflow-y:auto;padding:18px 18px 28px}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.4}
+  .sec{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+  .sec h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+
+  .drop{position:relative;min-height:150px;border:1.5px dashed var(--line);border-radius:12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font-size:13px;color:var(--muted);cursor:pointer;overflow:hidden;text-align:center;padding:10px}
+  .drop b{font-size:26px;font-weight:400;color:var(--accent)}
+  .drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;font-size:100px}
+  .drop.has{border-style:solid;padding:0;min-height:0}
+  .drop.has .ph{display:none}
+  #preview{display:none;max-width:100%;max-height:300px;width:auto;height:auto;margin:0 auto}
+  .drop.has #preview{display:block}
+  @media (max-width:760px){ #preview{max-height:200px} }
+  .drop .x{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;z-index:2;
+    border:0;background:rgba(0,0,0,.6);color:#fff;font-size:17px;line-height:30px;display:none;cursor:pointer}
+  .drop.has .x{display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:12px;color:var(--muted);margin-top:8px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+  #ai{margin-top:10px;font-size:13px;display:none;line-height:1.4}
+  #ai.show{display:block}
+  #ai .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:6px}
+  #ai .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  #ai.err{color:#b3261e}
+
+  .card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px}
+  .card .hd{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+  .card .hd .sw{width:18px;height:18px;border-radius:5px;border:1px solid rgba(0,0,0,.15);flex:none}
+  .card .hd label{margin-left:auto;font-weight:400;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
+  .card.off .bd{opacity:.4;pointer-events:none}
+  .empty{font-size:13px;color:var(--muted);line-height:1.4}
+
+  label.row{display:block;font-size:13px;margin:10px 0 2px}
+  label.row span{float:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;margin:8px 0;cursor:pointer}
+  .chk input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+  .seg{display:flex;gap:6px;margin-bottom:4px}
+  .btns{display:flex;gap:8px;margin-top:4px}
+  .btn{flex:1;border:1px solid var(--line);background:var(--panel);color:var(--text);
+    padding:10px;border-radius:10px;font-size:14px;cursor:pointer}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  #toggle{display:none}
+
+  @media (max-width:760px){
+    #app{flex-direction:column}
+    #panel{width:100%;height:48%;border-left:0;border-top:1px solid var(--line);padding:14px 16px 24px}
+    #app.collapsed #panel{height:0;padding:0;border:0;overflow:hidden}
+    #toggle{display:block;position:absolute;right:12px;bottom:12px;border:0;background:var(--accent);
+      color:#fff;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.2);z-index:3}
+    #hint{bottom:60px}
+    #views button{padding:8px 10px}
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <div id="views">
+      <button data-view="front">Ön</button>
+      <button data-view="side">Yan</button>
+      <button data-view="back">Arka</button>
+      <button data-view="spin" id="spinBtn">Döndür</button>
+    </div>
+    <div id="loading">3D manken yükleniyor…</div>
+    <div id="status"></div>
+    <div id="hint">Sürükle: döndür · İki parmak / tekerlek: yakınlaştır</div>
+    <button id="toggle">Ayarlar</button>
+  </div>
+
+  <aside id="panel">
+    <h1>Manken Giydir</h1>
+    <p class="sub">Kıyafet giymiş birinin fotoğrafını yükle. Kıyafetler algılanır ve senin ölçülerindeki mankene uyarlanarak giydirilir.</p>
+
+    <div class="drop" id="drop">
+      <div class="ph"><b>+</b><br>Fotoğraf seç<br><small>Tüm vücut, karşıdan çekilmiş olsun</small></div>
+      <canvas id="preview"></canvas>
+      <input type="file" accept="image/*" id="file">
+      <button class="x" id="clearPhoto" title="Kaldır">×</button>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div id="ai"><span id="aiText"></span><div class="bar"><i id="aiBar"></i></div></div>
+
+    <div class="sec">
+      <h2>Algılanan kıyafetler</h2>
+      <div id="garments"><p class="empty">Henüz fotoğraf yok. Fotoğraf yüklediğinde bulunan her kıyafet burada ayarlarıyla listelenir.</p></div>
+      <label class="chk"><input type="checkbox" id="backPlain"> Arka tarafı düz renk yap (ön desen arkaya geçmesin)</label>
+    </div>
+
+    <div class="sec">
+      <h2>Beden ölçülerin</h2>
+      <div class="seg">
+        <button class="btn" data-preset="kadin">Kadın ortalama</button>
+        <button class="btn" data-preset="erkek">Erkek ortalama</button>
+      </div>
+      <div id="measures"></div>
+    </div>
+
+    <div class="sec">
+      <h2>Kaydet</h2>
+      <div class="btns">
+        <button class="btn primary" id="shot">Görüntüyü indir</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ============ ÇEKİRDEK: beden ölçüleri, algılama, eşleme (3D'den bağımsız) ============ -->
+<script>
+window.GZ = (function(){
+  const PI = Math.PI;
+  const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+  const lerp = (a,b,t) => a + (b-a)*t;
+  function sstep(e0, e1, x){ const t = clamp((x-e0)/(e1-e0), 0, 1); return t*t*(3-2*t); }
+  function linEx(xs, ys, x){          // xs artan; uçlarda doğrusal uzatma
+    const n = xs.length; let i = 0;
+    if (x <= xs[0]) i = 0; else if (x >= xs[n-1]) i = n-2; else while (x > xs[i+1]) i++;
+    return lerp(ys[i], ys[i+1], (x - xs[i]) / (xs[i+1] - xs[i]));
+  }
+  function pchip(xs, ys){             // yumuşak, taşmayan eğri
+    const n = xs.length, h = [], d = [], m = new Array(n);
+    for (let i=0;i<n-1;i++){ h[i] = xs[i+1]-xs[i]; d[i] = (ys[i+1]-ys[i])/h[i]; }
+    m[0] = d[0]; m[n-1] = d[n-2];
+    for (let i=1;i<n-1;i++){
+      if (d[i-1]*d[i] <= 0) m[i] = 0;
+      else { const w1 = 2*h[i]+h[i-1], w2 = h[i]+2*h[i-1]; m[i] = (w1+w2)/(w1/d[i-1]+w2/d[i]); }
+    }
+    return x => {
+      if (x <= xs[0]) return ys[0]; if (x >= xs[n-1]) return ys[n-1];
+      let i = 0; while (x > xs[i+1]) i++;
+      const t = (x-xs[i])/h[i], t2 = t*t, t3 = t2*t;
+      return (2*t3-3*t2+1)*ys[i] + (t3-2*t2+t)*h[i]*m[i] + (-2*t3+3*t2)*ys[i+1] + (t3-t2)*h[i]*m[i+1];
+    };
+  }
+  // Çevre ölçüsünden elips yarı eksenleri (k = derinlik/genişlik)
+  function ellipse(C, k){
+    const a = C / (PI*(3*(1+k) - Math.sqrt((3+k)*(1+3*k))));
+    return { a, b: a*k };
+  }
+
+  /* ---------- Parametrik beden (metre) ---------- */
+  function makeBody(M){
+    const H = M.boy/100, sh = M.omuz/200, gC = M.gogus/100, wC = M.bel/100, hC = M.kalca/100;
+    const ch = ellipse(gC, 0.68), wa = ellipse(wC, 0.74), hi = ellipse(hC, 0.76);
+    const neckR = 0.36*gC/(2*PI);
+    const L = lerp;
+    const rings = [                         // [boy oranı, yarı genişlik, yarı derinlik]
+      [0.438, hi.a*0.25, hi.b*0.20],
+      [0.452, hi.a*0.72, hi.b*0.55],
+      [0.475, hi.a*0.93, hi.b*0.88],
+      [0.515, hi.a,      hi.b],
+      [0.565, L(hi.a,wa.a,.5), L(hi.b,wa.b,.5)],
+      [0.620, wa.a,      wa.b],
+      [0.670, L(wa.a,ch.a,.55), L(wa.b,ch.b,.55)],
+      [0.720, ch.a,      ch.b],
+      [0.755, Math.max(ch.a, sh*0.86), ch.b*0.95],
+      [0.790, Math.max(ch.a*0.98, sh*0.93), ch.b*0.8],
+      [0.812, sh*0.8,    ch.b*0.62],
+      [0.828, neckR*1.55, neckR*1.3],
+      [0.842, neckR,     neckR],
+      [0.885, neckR*0.95, neckR*0.95],
+    ];
+    const ys = rings.map(r => r[0]*H);
+    const fx = pchip(ys, rings.map(r => r[1])), fz = pchip(ys, rings.map(r => r[2]));
+    const B = { H, M };
+    B.torso = y => ({ rx: fx(y), rz: fz(y) });
+    B.torsoY0 = ys[0]; B.torsoY1 = ys[ys.length-1];
+    B.hipLineY = 0.515*H; B.waistY = 0.62*H; B.neckBaseY = 0.833*H;
+    B.shoulderY = 0.80*H; B.armpitY = 0.745*H;
+
+    // Kollar (A duruşu)
+    const k2 = gC/(2*PI);
+    const rUp = 0.30*k2, rEl = 0.245*k2, rFo = 0.255*k2, rWr = 0.165*k2;
+    const up = 0.186*H, fo = 0.146*H, ang = 20*PI/180;
+    B.jointX = sh - 0.7*rUp;
+    B.arms = {};
+    for (const s of [-1, 1]){
+      const d = { x: s*Math.sin(ang), y: -Math.cos(ang), z: 0 };
+      const A = { x: s*B.jointX, y: 0.80*H, z: 0 };
+      const E = { x: A.x + d.x*up, y: A.y + d.y*up, z: 0 };
+      const W = { x: E.x + d.x*fo, y: E.y + d.y*fo, z: 0 };
+      const rf = pchip([0, 0.15*up, 0.45*up, up, up+0.25*fo, up+fo], [rUp*1.02, rUp, rUp*0.9, rEl, rFo, rWr]);
+      B.arms[s] = { s, A, E, W, d, u:{ x:-d.y, y:d.x, z:0 }, up, fo, rUp,
+        r: dist => rf(clamp(dist, 0, up+fo)),
+        distOf: p => p < 1 ? p*up : up + (p-1)*fo };
+    }
+
+    // Bacaklar
+    const hipJx = hi.a*0.46, kx = hipJx*0.85, ax = hipJx*0.8;
+    B.hipJx = hipJx;
+    const k3 = hC/(2*PI);
+    const thighR = 0.58*k3, kneeR = 0.36*k3, calfR = 0.37*k3, ankR = 0.22*k3;
+    const lr = pchip([0.045,0.06,0.13,0.22,0.285,0.33,0.40,0.47,0.54].map(f => f*H),
+                     [ankR, ankR*1.05, calfR*0.78, calfR, kneeR, thighR*0.7, thighR*0.88, thighR, thighR*0.97]);
+    const hipY = 0.49*H, kneeY = 0.285*H, ankY = 0.045*H;
+    B.legTopY = 0.54*H;
+    B.legs = {};
+    for (const s of [-1, 1]){
+      B.legs[s] = { s,
+        hip:{ x:s*hipJx, y:hipY, z:0 }, knee:{ x:s*kx, y:kneeY, z:0 }, ankle:{ x:s*ax, y:ankY, z:0 },
+        thighLen: Math.hypot(hipJx-kx, hipY-kneeY), shinLen: Math.hypot(kx-ax, kneeY-ankY),
+        yOf: p => p < 1 ? lerp(hipY, kneeY, p) : lerp(kneeY, ankY, p-1),
+        xOf: y => s*(y >= kneeY ? lerp(kx, hipJx, (y-kneeY)/(hipY-kneeY)) : lerp(ax, kx, (y-ankY)/(kneeY-ankY))),
+        r: y => lr(y) };
+    }
+    B.legsBound = y => {
+      if (y > B.legTopY) return { x:0, z:0 };
+      const g = B.legs[1]; return { x: g.xOf(y) + g.r(y)*0.95, z: g.r(y) };
+    };
+
+    // Merkez çizgisi parametresi q: -1 burun, 0 omuz, 1 kalça, 2 diz, 3 ayak bileği
+    B.qYs = [0.925, 0.80, 0.49, 0.285, 0.045].map(f => f*H);
+    const qK = [-1, 0, 1, 2, 3];
+    const rY = B.qYs.slice().reverse(), rQ = qK.slice().reverse();
+    B.qToY = q => linEx(qK, B.qYs, q);
+    B.yToQ = y => linEx(rY, rQ, y);
+
+    B.head = { c:{ x:0, y:0.935*H, z:0.004*H }, r:{ x:0.046*H, y:0.065*H, z:0.056*H } };
+    B.feet = {}; B.hands = {};
+    for (const s of [-1, 1]){
+      B.feet[s] = { c:{ x:s*ax, y:0, z:0.03*H }, r:{ x:0.03*H, y:0.05*H, z:0.08*H } };   // zemine oturan kubbe
+      const a = B.arms[s];
+      B.hands[s] = { c:{ x:a.W.x + a.d.x*0.05*H, y:a.W.y + a.d.y*0.05*H, z:0.004*H }, d:a.d,
+                     r:{ x:0.026*H, y:0.052*H, z:0.014*H } };
+    }
+    return B;
+  }
+
+  /* ---------- Etiket haritası araçları ---------- */
+  const LABELS = ["Background","Hat","Hair","Sunglasses","Upper-clothes","Skirt","Pants","Dress","Belt",
+    "Left-shoe","Right-shoe","Face","Left-leg","Right-leg","Left-arm","Right-arm","Bag","Scarf"];
+  const sub = (a,b) => ({ x:a.x-b.x, y:a.y-b.y });
+  const mid = (a,b) => ({ x:(a.x+b.x)/2, y:(a.y+b.y)/2 });
+  const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+  const norm = v => { const l = Math.hypot(v.x, v.y) || 1; return { x:v.x/l, y:v.y/l }; };
+
+  function tools(L, W, H){
+    const r = Math.max(1, Math.round(Math.min(W, H)/200));
+    const at = (x,y) => { x = Math.round(x); y = Math.round(y); return (x<0||y<0||x>=W||y>=H) ? 0 : L[y*W+x]; };
+    const has = (x,y,set) => {
+      for (let dy=-r; dy<=r; dy+=r) for (let dx=-r; dx<=r; dx+=r) if (set.has(at(x+dx, y+dy))) return true;
+      return false;
+    };
+    const hasExact = (x,y,set) => set.has(at(x,y));
+    function width(c, d, set, oneSided){
+      let off = null;
+      for (const o of [0,2,-2,4,-4,7,-7,10,-10,14,-14]) if (hasExact(c.x+d.x*o, c.y+d.y*o, set)) { off = o; break; }
+      if (off === null) return 0;
+      const c0 = { x:c.x+d.x*off, y:c.y+d.y*off };
+      const walk = sg => {
+        let last = 0, gap = 0;
+        for (let s=1; s<W+H; s++){
+          const x = c0.x+d.x*s*sg, y = c0.y+d.y*s*sg;
+          if (x<0||y<0||x>=W||y>=H) break;
+          if (hasExact(x,y,set)) { last = s; gap = 0; } else if (++gap > Math.max(4, r*3)) break;
+        }
+        return last;
+      };
+      if (oneSided) return 2*Math.max(0, off + walk(1));
+      return walk(1) + walk(-1) + 1;
+    }
+    return { has, hasExact, width, W, H };
+  }
+  function polyAt(pts, ks, q){
+    const n = ks.length; let i = 0;
+    if (q <= ks[0]) i = 0; else if (q >= ks[n-1]) i = n-2; else while (q > ks[i+1]) i++;
+    const t = (q-ks[i])/(ks[i+1]-ks[i]);
+    return { x: lerp(pts[i].x, pts[i+1].x, t), y: lerp(pts[i].y, pts[i+1].y, t) };
+  }
+  // Çizgi boyunca kıyafetin kapladığı ilk kesintisiz bölümü bulur
+  function scanRun(T, pts, ks, set, from, to){
+    const step = 0.02; let start = null, end = null, gap = 0, streak = 0;
+    for (let q = from; q <= to + 1e-9; q += step){
+      const p = polyAt(pts, ks, q), h = T.has(p.x, p.y, set);
+      if (start === null){
+        if (h){ if (++streak >= 3){ start = q - 2*step; end = q; } } else streak = 0;
+      } else {
+        if (h){ end = q; gap = 0; } else { gap += step; if (gap > 0.14) break; }
+      }
+    }
+    return start === null ? null : { start, end };
+  }
+
+  /* ---------- Kıyafet algılama ---------- */
+  function detect(det, B){
+    const { W, H, L, px, lm } = det;
+    const T = tools(L, W, H);
+    const P = i => lm[i];
+    const cPts = [P(0), mid(P(11),P(12)), mid(P(23),P(24)), mid(P(25),P(26)), mid(P(27),P(28))];
+    const cK = [-1,0,1,2,3];
+    const shDist = dist(P(11),P(12)) || 1, hipDist = dist(P(23),P(24)) || 1;
+    const shDir = norm(sub(P(11),P(12))), hipDir = norm(sub(P(23),P(24)));
+    const N = W*H, area = new Array(LABELS.length).fill(0);
+    for (let i=0;i<N;i++) area[L[i]]++;
+
+    function color(set){
+      let r=0,g=0,b=0,n=0;
+      for (let i=0;i<N;i+=2) if (set.has(L[i])) { r+=px[i*4]; g+=px[i*4+1]; b+=px[i*4+2]; n++; }
+      return n ? [r/n, g/n, b/n] : [200,200,200];
+    }
+    const armPts = s => s < 0 ? [P(12),P(14),P(16)] : [P(11),P(13),P(15)];
+    const legPts = s => s < 0 ? [P(24),P(26),P(28)] : [P(23),P(25),P(27)];
+    const outward = (a, from, center) => {
+      let n = { x:-a.y, y:a.x }; const aw = sub(from, center);
+      if (n.x*aw.x + n.y*aw.y < 0) n = { x:-n.x, y:-n.y };
+      return n;
+    };
+
+    function sleeve(set){
+      let best = 0; const eases = [];
+      for (const s of [-1, 1]){
+        const pts = armPts(s), r = scanRun(T, pts, [0,1,2], set, 0, 2.05);
+        const pe = (r && r.start <= 0.35) ? r.end : 0;
+        best = Math.max(best, pe);
+        if (pe > 0.15){
+          const pm = Math.min(0.5, pe*0.5), c = polyAt(pts, [0,1,2], pm);
+          const n = outward(norm(sub(pts[1], pts[0])), pts[0], cPts[1]);
+          const w = T.width(c, n, set, true);
+          if (w > 0){
+            const a = B.arms[s], wB = w/(dist(pts[0],pts[1])||1)*a.up;
+            eases.push(clamp(wB/2 - a.r(a.distOf(pm)), 0.004, 0.06));
+          }
+        }
+      }
+      return { p: Math.min(best, 2), ease: eases.length ? eases.reduce((x,y)=>x+y)/eases.length : 0.012 };
+    }
+    function torsoEase(set, q){
+      const c = polyAt(cPts, cK, q), w = T.width(c, shDir, set, false);
+      if (!w) return 0.015;
+      const half = w/shDist*B.jointX, y = B.qToY(q);
+      const rx = y >= B.hipLineY ? B.torso(y).rx : B.torso(B.hipLineY).rx;
+      return clamp(half - rx, 0.005, 0.07);
+    }
+    function hemHalf(set, qHem){
+      const q = qHem - 0.06, c = polyAt(cPts, cK, q), w = T.width(c, hipDir, set, false);
+      const lb = B.legsBound(B.qToY(q));
+      const minH = Math.max(B.torso(B.hipLineY).rx, lb.x) + 0.01;
+      return w ? Math.max(minH, w/hipDist*B.hipJx) : minH + 0.03;
+    }
+
+    const out = [], min = N*0.004;
+    const S = arr => new Set(arr);
+
+    if (area[7] > min){                       // Elbise
+      const set = S([7]), r = scanRun(T, cPts, cK, set, -1, 3);
+      const qTop = r ? r.start : -0.2, qHem = r ? r.end : 2;
+      const sl = sleeve(set);
+      out.push({ type:'dress', set:[7], color:color(set), p:{
+        qTop: clamp(qTop,-0.45,0.6), qHem: clamp(qHem,1.05,3), sleeve: sl.p, sleeveEase: sl.ease,
+        ease: torsoEase(set, clamp(qTop+0.5, 0.2, 0.75)), hemHalf: hemHalf(set, qHem) }});
+    }
+    if (area[4] > min){                       // Üst
+      const set = S([4]), r = scanRun(T, cPts, cK, set, -1, 3);
+      const qTop = r ? r.start : -0.2, qHem = r ? r.end : 1;
+      const sl = sleeve(set);
+      out.push({ type:'upper', set:[4], color:color(set), p:{
+        qTop: clamp(qTop,-0.45,0.6), qHem: clamp(qHem,0.4,2.6), sleeve: sl.p, sleeveEase: sl.ease,
+        ease: torsoEase(set, clamp((qTop+qHem)/2, 0.3, 0.8)), hemHalf: null }});
+    }
+    if (area[5] > min){                       // Etek
+      const set = S([5]), r = scanRun(T, cPts, cK, set, 0.3, 3);
+      let qTop = r ? r.start : 0.75;
+      const qHem = r ? r.end : 1.6;
+      if (r){ const a = polyAt(cPts, cK, r.start - 0.06); if (T.has(a.x, a.y, S([4,7]))) qTop = Math.min(qTop, 0.72); }
+      out.push({ type:'skirt', set:[5], color:color(set), p:{
+        qTop: clamp(qTop,0.45,1), qHem: clamp(qHem,1.05,3), hemHalf: hemHalf(set, qHem) }});
+    }
+    if (area[6] > min){                       // Pantolon / şort
+      const set = S([6]), r = scanRun(T, cPts, cK, set, 0.3, 3);
+      let qTop = r ? r.start : 0.8;
+      if (r){                                   // bel üstteki kıyafetin altında kalıyorsa normal bel yüksekliği
+        const a = polyAt(cPts, cK, r.start - 0.06);
+        if (T.has(a.x, a.y, S([4,7]))) qTop = Math.min(qTop, 0.72);
+      }
+      let pe = 0; const e = { t:[], k:[], h:[] };
+      const legEase = (s, pts, p) => {
+        const seg = p <= 1 ? [pts[0],pts[1]] : [pts[1],pts[2]];
+        const c = polyAt(pts, [0,1,2], p), n = outward(norm(sub(seg[1],seg[0])), pts[0], cPts[2]);
+        const w = T.width(c, n, set, true); if (!w) return null;
+        const g = B.legs[s], wB = w/(dist(seg[0],seg[1])||1)*(p <= 1 ? g.thighLen : g.shinLen);
+        return clamp(wB/2 - g.r(g.yOf(p)), 0.004, 0.14);
+      };
+      for (const s of [-1,1]){
+        const pts = legPts(s), rr = scanRun(T, pts, [0,1,2], set, -0.1, 2.1);
+        if (!rr || rr.start > 0.5) continue;
+        pe = Math.max(pe, rr.end);
+        let v;
+        if ((v = legEase(s, pts, 0.35)) != null) e.t.push(v);
+        if (rr.end > 1.05 && (v = legEase(s, pts, 1)) != null) e.k.push(v);
+        if ((v = legEase(s, pts, Math.max(0.3, rr.end-0.08))) != null) e.h.push(v);
+      }
+      const av = (a, d) => a.length ? a.reduce((x,y)=>x+y)/a.length : d;
+      const et = av(e.t, 0.02);
+      out.push({ type:'pants', set:[6], color:color(set), p:{
+        qTop: clamp(qTop,0.45,1), leg: clamp(pe || 2, 0.25, 2.08),
+        easeThigh: et, easeKnee: av(e.k, et), easeHem: av(e.h, av(e.k, et)) }});
+    }
+    if (area[9] + area[10] > N*0.0008) out.push({ type:'shoes', set:[9,10], color:color(S([9,10])), p:{} });
+    if (area[1] > N*0.002) out.push({ type:'hat', set:[1], color:color(S([1])), p:{} });
+    if (area[8] > N*0.0008) out.push({ type:'belt', set:[8], color:color(S([8])), p:{} });
+    return out;
+  }
+
+  /* ---------- Fotoğraf → beden eşlemesi (desen nereye düşecek) ---------- */
+  function makeMapper(det, B){
+    const { W, H } = det;
+    const U = i => ({ x: det.lm[i].x, y: -det.lm[i].y });     // yukarı-pozitif piksel uzayı
+    const lS = U(11), rS = U(12), lH = U(23), rH = U(24);
+    const C = [U(0), mid(lS,rS), mid(lH,rH), mid(U(25),U(26)), mid(U(27),U(28))];
+    const sv = sub(lS, rS), hv = sub(lH, rH);
+    const sl = Math.hypot(sv.x, sv.y) || 1, hl = Math.hypot(hv.x, hv.y) || 1;
+    const sS = sl/(2*B.jointX), sH = hl/(2*B.hipJx);
+    const dS = { x:sv.x/sl, y:sv.y/sl }, dH = { x:hv.x/hl, y:hv.y/hl };
+    const Ys = B.qYs, Sc = [sS,sS,sH,sH,sH], D = [dS,dS,dH,dH,dH];
+    const uv = p => [p.x/W, 1 + p.y/H];
+    function torso(x, y){
+      let i = 0;
+      if (y >= Ys[0]) i = 0; else if (y <= Ys[4]) i = 3; else while (y < Ys[i+1]) i++;
+      const t = (Ys[i]-y)/(Ys[i]-Ys[i+1]), tc = clamp(t, 0, 1);
+      const c = { x: lerp(C[i].x, C[i+1].x, t), y: lerp(C[i].y, C[i+1].y, t) };
+      const s = lerp(Sc[i], Sc[i+1], tc);
+      const d = norm({ x: lerp(D[i].x, D[i+1].x, tc), y: lerp(D[i].y, D[i+1].y, tc) });
+      return uv({ x: c.x + d.x*x*s, y: c.y + d.y*x*s });
+    }
+    function sim(A, Bp, A2, B2, p){        // benzerlik dönüşümü (karmaşık sayı ile)
+      const dx = Bp.x-A.x, dy = Bp.y-A.y, ex = B2.x-A2.x, ey = B2.y-A2.y;
+      const den = dx*dx + dy*dy || 1e-9, rr = (ex*dx+ey*dy)/den, ri = (ey*dx-ex*dy)/den;
+      const zx = p.x-A.x, zy = p.y-A.y;
+      return { x: A2.x + rr*zx - ri*zy, y: A2.y + rr*zy + ri*zx };
+    }
+    function arm(s, p){
+      const a = B.arms[s], I = (s < 0 ? [12,14,16] : [11,13,15]).map(U);
+      const dd = (p.x-a.A.x)*a.d.x + (p.y-a.A.y)*a.d.y;
+      return uv(dd < a.up ? sim(a.A, a.E, I[0], I[1], p) : sim(a.E, a.W, I[1], I[2], p));
+    }
+    function leg(s, p){
+      const g = B.legs[s], I = (s < 0 ? [24,26,28] : [23,25,27]).map(U);
+      return uv(p.y >= g.knee.y ? sim(g.hip, g.knee, I[0], I[1], p) : sim(g.knee, g.ankle, I[1], I[2], p));
+    }
+    return { torso, arm, leg };
+  }
+
+  /* ---------- Kıyafet dokusu: kapalı kalan yerleri çevre renkleriyle doldur ---------- */
+  function pushPull(c0, W, H){
+    const lv = [{ c:c0, w:W, h:H }];
+    while (lv[lv.length-1].w > 1 || lv[lv.length-1].h > 1){
+      const p = lv[lv.length-1], w = Math.ceil(p.w/2), h = Math.ceil(p.h/2), c = new Float32Array(w*h*4);
+      for (let y=0;y<h;y++) for (let x=0;x<w;x++){
+        let r=0,g=0,b=0,a=0;
+        for (let dy=0;dy<2;dy++) for (let dx=0;dx<2;dx++){
+          const X = 2*x+dx, Y = 2*y+dy; if (X >= p.w || Y >= p.h) continue;
+          const o = (Y*p.w+X)*4; r+=p.c[o]; g+=p.c[o+1]; b+=p.c[o+2]; a+=p.c[o+3];
+        }
+        if (a > 1){ r/=a; g/=a; b/=a; a = 1; }
+        const o = (y*w+x)*4; c[o]=r; c[o+1]=g; c[o+2]=b; c[o+3]=a;
+      }
+      lv.push({ c, w, h });
+    }
+    for (let i=lv.length-2; i>=0; i--){
+      const f = lv[i], p = lv[i+1];
+      for (let y=0;y<f.h;y++) for (let x=0;x<f.w;x++){
+        const o = (y*f.w+x)*4, a = f.c[o+3]; if (a >= 1) continue;
+        const fx = clamp((x+0.5)/2-0.5, 0, p.w-1), fy = clamp((y+0.5)/2-0.5, 0, p.h-1);
+        const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(p.w-1, x0+1), y1 = Math.min(p.h-1, y0+1);
+        const tx = fx-x0, ty = fy-y0, k = 1-a;
+        for (let ch=0; ch<4; ch++){
+          const v = lerp(lerp(p.c[(y0*p.w+x0)*4+ch], p.c[(y0*p.w+x1)*4+ch], tx),
+                         lerp(p.c[(y1*p.w+x0)*4+ch], p.c[(y1*p.w+x1)*4+ch], tx), ty);
+          f.c[o+ch] += k*v;
+        }
+      }
+    }
+    return lv[0].c;
+  }
+  function garmentPixels(det, labels){
+    const { W, H, L, px } = det, set = new Set(labels), n = W*H;
+    const c = new Float32Array(n*4);
+    for (let i=0;i<n;i++) if (set.has(L[i])){ c[i*4]=px[i*4]/255; c[i*4+1]=px[i*4+1]/255; c[i*4+2]=px[i*4+2]/255; c[i*4+3]=1; }
+    const f = pushPull(c, W, H), out = new Uint8ClampedArray(n*4);
+    for (let i=0;i<n;i++){
+      const a = f[i*4+3] || 1;
+      out[i*4] = f[i*4]/a*255; out[i*4+1] = f[i*4+1]/a*255; out[i*4+2] = f[i*4+2]/a*255; out[i*4+3] = 255;
+    }
+    return out;
+  }
+
+  return { clamp, lerp, sstep, pchip, ellipse, makeBody, LABELS, tools, scanRun, polyAt, detect, makeMapper, pushPull, garmentPixels };
+})();
+</script>
+
+<!-- ============ Fotoğraf seçme (3D'den bağımsız) ============ -->
+<script>
+(function(){
+  var st = document.getElementById('status'), hideT;
+  window.showStatus = function(msg, ok){
+    clearTimeout(hideT);
+    st.textContent = msg; st.className = 'show' + (ok ? ' ok' : '');
+    if (ok) hideT = setTimeout(function(){ st.className = ''; }, 2500);
+  };
+  window.hideStatus = function(){ st.className = ''; };
+  var inp = document.getElementById('file'), drop = document.getElementById('drop');
+  function handle(file){
+    if (!file) return;
+    var name = (file.name || '').toLowerCase();
+    var isHeic = /heic|heif/.test(file.type) || /\.(heic|heif)$/.test(name);
+    var url = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){
+      var max = 768, s = Math.min(1, max/Math.max(im.width, im.height));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(im.width*s)); c.height = Math.max(1, Math.round(im.height*s));
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      var pv = document.getElementById('preview');
+      pv.width = c.width; pv.height = c.height; pv.getContext('2d').drawImage(c, 0, 0);
+      drop.classList.add('has');
+      window.__photo = c;
+      document.dispatchEvent(new CustomEvent('photo-ready'));
+      if (!window.__3dReady) showStatus('Fotoğraf alındı, 3D manken hâlâ yükleniyor…');
+    };
+    im.onerror = function(){
+      URL.revokeObjectURL(url);
+      showStatus(isHeic
+        ? 'Bu fotoğraf HEIC formatında, tarayıcı açamıyor. Ekran görüntüsünü al ya da JPG/PNG olarak kaydedip tekrar dene.'
+        : 'Bu dosya açılamadı. JPG veya PNG bir resim dene.');
+    };
+    im.src = url;
+  }
+  inp.addEventListener('change', function(){ handle(inp.files && inp.files[0]); inp.value = ''; });
+  drop.addEventListener('dragover', function(e){ e.preventDefault(); });
+  drop.addEventListener('drop', function(e){ e.preventDefault(); handle(e.dataTransfer.files[0]); });
+  document.getElementById('clearPhoto').addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    window.__photo = null; drop.classList.remove('has');
+    document.dispatchEvent(new CustomEvent('photo-clear'));
+  });
+  setTimeout(function(){
+    if (!window.__3dReady){
+      var l = document.getElementById('loading'); if (l) l.textContent = '';
+      showStatus('3D manken yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile. Tarayıcı çok eskiyse güncellemen gerekebilir.');
+    }
+  }, 20000);
+})();
+</script>
+
+<!-- ============ 3D sahne, giydirme, arayüz ============ -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const G = window.GZ;
+const $ = id => document.getElementById(id);
+
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task';
+const TF = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js';
+const SEG_MODEL = 'Xenova/segformer_b2_clothes';
+
+/* ---------------- Sahne ---------------- */
+const stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 0.6; controls.maxDistance = 9;
+
+const key = new THREE.DirectionalLight(0xffffff, 1.3);
+key.position.set(2, 4, 3); key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+Object.assign(key.shadow.camera, { left:-1.5, right:1.5, top:2.5, bottom:-0.5 });
+key.shadow.bias = -0.0005;
+scene.add(key);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d4cc, 0.5));
+
+const floor = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity:0.12 }));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.32, 0.025, 64),
+  new THREE.MeshStandardMaterial({ color:0xcfccc6, roughness:0.35, metalness:0.2 }));
+base.position.y = 0.0125; base.receiveShadow = true; scene.add(base);
+
+const root = new THREE.Group(); root.position.y = 0.025; scene.add(root);
+const bodyGroup = new THREE.Group(), clothGroup = new THREE.Group();
+root.add(bodyGroup, clothGroup);
+
+const skinMat = new THREE.MeshStandardMaterial({ color:0xf7f6f3, roughness:0.55 });
+
+/* ---------------- Geometri yardımcıları ---------------- */
+// Halka ızgarası: fn(v, açı) → [x,y,z]; uvFn(konum) → [u,v]
+function makeGrid(nv, nu, fn, uvFn){
+  const n = (nv+1)*nu, pos = new Float32Array(n*3);
+  for (let r=0; r<=nv; r++) for (let c=0; c<nu; c++){
+    const p = fn(r/nv, c/nu*Math.PI*2), o = (r*nu+c)*3;
+    pos[o] = p[0]; pos[o+1] = p[1]; pos[o+2] = p[2];
+  }
+  const idx = [];
+  for (let r=0; r<nv; r++) for (let c=0; c<nu; c++){
+    const a = r*nu+c, b = r*nu+(c+1)%nu, cc = (r+1)*nu+c, d = (r+1)*nu+(c+1)%nu;
+    idx.push(a, cc, b, b, cc, d);
+  }
+  // Yüzeyler dışa baksın
+  const r0 = Math.floor(nv/2), V = i => new THREE.Vector3(pos[i*3], pos[i*3+1], pos[i*3+2]);
+  const cen = new THREE.Vector3(); for (let c=0; c<nu; c++) cen.add(V(r0*nu+c)); cen.divideScalar(nu);
+  const A = V(r0*nu), nrm = new THREE.Vector3().crossVectors(V((r0+1)*nu).sub(A), V(r0*nu+1).sub(A));
+  if (nrm.dot(A.clone().sub(cen)) < 0) for (let i=0; i<idx.length; i+=3){ const t = idx[i+1]; idx[i+1] = idx[i+2]; idx[i+2] = t; }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  if (uvFn) setUV(geo, uvFn);
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return geo;
+}
+function setUV(geo, uvFn){
+  const p = geo.attributes.position, uv = new Float32Array(p.count*2);
+  for (let i=0; i<p.count; i++){ const t = uvFn({ x:p.getX(i), y:p.getY(i), z:p.getZ(i) }); uv[i*2] = t[0]; uv[i*2+1] = t[1]; }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+function ellipsoidGeo(c, r, dir, opts){
+  const o = opts || {};
+  const g = new THREE.SphereGeometry(1, o.w || 40, o.h || 28, 0, Math.PI*2, 0, o.theta || Math.PI);
+  g.scale(r.x, r.y, r.z);
+  if (dir) g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), new THREE.Vector3(dir.x, dir.y, dir.z)));
+  g.translate(c.x, c.y, c.z);
+  return g;
+}
+function addMesh(group, geo, mat){
+  const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; group.add(m); return m;
+}
+function clearGroup(g){
+  while (g.children.length){ const m = g.children.pop(); m.geometry.dispose(); }
+}
+const armTube = (a, p0, p1, extra) => (v, th) => {
+  const dd = G.lerp(a.distOf(p0), a.distOf(p1), v), r = a.r(dd) + (typeof extra === 'function' ? extra(dd) : extra);
+  const cx = a.A.x + a.d.x*dd, cy = a.A.y + a.d.y*dd;
+  return [cx + a.u.x*r*Math.cos(th), cy + a.u.y*r*Math.cos(th), r*0.95*Math.sin(th)];
+};
+// Omuz yuvarlağı: kolun üst ağzını kapatır, omuz çizgisinden taşmaz
+const deltoidC = a => ({ x:a.A.x, y:a.A.y - 0.15*a.rUp, z:0 });
+const deltoidR = (a, e) => ({ x:a.rUp*1.1 + e, y:a.rUp*0.85 + e, z:a.rUp*1.05 + e });
+const legTube = (g, p0, p1, easeFn) => (v, th) => {
+  const p = G.lerp(p0, p1, v), y = g.yOf(p), r = g.r(y) + easeFn(p);
+  return [g.xOf(y) + r*0.95*Math.cos(th), y, r*Math.sin(th)];
+};
+
+/* ---------------- Beden ---------------- */
+const PRESETS = {
+  kadin: { boy:165, omuz:38, gogus:88, bel:70, kalca:96 },
+  erkek: { boy:178, omuz:45, gogus:100, bel:86, kalca:100 },
+};
+const MEAS = [
+  ['boy','Boy',140,205], ['omuz','Omuz genişliği',32,54], ['gogus','Göğüs çevresi',70,135],
+  ['bel','Bel çevresi',55,135], ['kalca','Kalça çevresi',75,140],
+];
+let M = { ...PRESETS.kadin };
+try { const s = JSON.parse(localStorage.getItem('manken-olcu') || 'null'); if (s) M = { ...M, ...s }; } catch(e){}
+let B = G.makeBody(M);
+
+function buildBody(){
+  clearGroup(bodyGroup);
+  addMesh(bodyGroup, makeGrid(90, 72, (v, th) => {
+    const y = G.lerp(B.torsoY0, B.torsoY1, v), r = B.torso(y);
+    return [r.rx*Math.cos(th), y, r.rz*Math.sin(th)];
+  }), skinMat);
+  for (const s of [-1, 1]){
+    const a = B.arms[s];
+    addMesh(bodyGroup, makeGrid(40, 40, armTube(a, 0, 2, 0)), skinMat);
+    addMesh(bodyGroup, ellipsoidGeo(deltoidC(a), deltoidR(a, 0)), skinMat);
+    const h = B.hands[s]; addMesh(bodyGroup, ellipsoidGeo(h.c, h.r, h.d, { w:24, h:16 }), skinMat);
+    const g = B.legs[s];
+    addMesh(bodyGroup, makeGrid(70, 40, legTube(g, -0.22, 2, () => 0)), skinMat);
+    const f = B.feet[s]; addMesh(bodyGroup, ellipsoidGeo(f.c, f.r, null, { w:32, h:16, theta:Math.PI*0.5 }), skinMat);
+  }
+  addMesh(bodyGroup, ellipsoidGeo(B.head.c, B.head.r), skinMat);
+}
+
+/* ---------------- Kıyafetler ---------------- */
+let det = null, garments = [], mapper = null;
+const opt = { backPlain: false };
+
+const srgb = c => new THREE.Color().setRGB(c[0]/255, c[1]/255, c[2]/255, THREE.SRGBColorSpace);
+function clothMaterial(g){
+  if (!g.mat){
+    const u = { uPlain:{ value:0 }, uPlainColor:{ value: srgb(g.color) } };
+    const m = new THREE.MeshStandardMaterial({ map: g.tex || null, color: g.tex ? 0xffffff : srgb(g.color),
+      roughness:0.85, side:THREE.DoubleSide });
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, u);
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjN = objectNormal;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vObjN; uniform float uPlain; uniform vec3 uPlainColor;')
+        .replace('#include <map_fragment>', `#include <map_fragment>
+          if (uPlain > 0.5) {
+            float w = smoothstep(-0.3, 0.05, normalize(vObjN).z);
+            diffuseColor.rgb = mix(uPlainColor, diffuseColor.rgb, w);
+          }`);
+    };
+    m.customProgramCacheKey = () => 'cloth';
+    m.userData.u = u; g.mat = m;
+  }
+  g.mat.userData.u.uPlain.value = opt.backPlain ? 1 : 0;
+  return g.mat;
+}
+
+// Gövdeyi saran kabuk (üst, elbise, etek, pantolonun bel kısmı)
+function radShell(o){
+  return y => {
+    const e = o.easeFn ? o.easeFn(y) : o.easeMin + (o.ease - o.easeMin)*G.sstep(B.shoulderY, B.armpitY, y);
+    if (o.follow || y >= B.hipLineY){ const r = B.torso(y); return { rx:r.rx+e, rz:r.rz+e }; }
+    const r0 = B.torso(B.hipLineY), hx = r0.rx + o.ease, hz = r0.rz + o.ease;
+    const f = B.hipLineY > o.yHem ? G.clamp((B.hipLineY - y)/(B.hipLineY - o.yHem), 0, 1) : 0;
+    const target = o.hemHalf != null ? Math.max(o.hemHalf, hx*0.92) : hx;
+    let rx = G.lerp(hx, target, Math.pow(f, 0.85)), rz = hz*Math.pow(rx/hx, 0.8);
+    const lb = B.legsBound(y);
+    rx = Math.max(rx, lb.x + o.ease*0.5 + 0.008); rz = Math.max(rz, lb.z + o.ease*0.5 + 0.008);
+    return { rx, rz };
+  };
+}
+function shell(yBot, yTopFn, rad, uvFn){
+  return makeGrid(100, 72, (v, th) => {
+    const y = G.lerp(yBot, yTopFn(th), v), r = rad(y);
+    return [r.rx*Math.cos(th), y, r.rz*Math.sin(th)];
+  }, uvFn);
+}
+
+const LAYER = { pants:0, skirt:0.004, upper:0.009, dress:0.009 };
+function buildUpperLike(g){
+  const p = g.p, lay = LAYER[g.type], mat = clothMaterial(g), H = B.H;
+  const easeMin = 0.005 + lay, ease = Math.max(easeMin, p.ease + lay);
+  const nat = B.neckBaseY;
+  const yFront = Math.min(B.qToY(p.qTop), 0.885*H);
+  const yHem = Math.min(B.qToY(p.qHem), nat - 0.1*H);
+  const yTopFn = yFront > nat + 0.012*H ? () => yFront
+    : th => nat - Math.max(0, nat - yFront)*Math.pow(Math.max(0, Math.sin(th)), 1.6);
+  const rad = radShell({ ease, easeMin, yHem, hemHalf: p.hemHalf });
+  addMesh(clothGroup, shell(yHem, yTopFn, rad, q => mapper.torso(q.x, q.y)), mat);
+  if (p.sleeve > 0.04){
+    const se = Math.max(0.004, p.sleeveEase) + lay*0.5, seTop = Math.min(se, 0.004 + lay*0.5);
+    for (const s of [-1, 1]){
+      const a = B.arms[s];
+      // omuzda oturan, aşağı doğru bollaşan kol
+      const sleeveEase = dd => G.lerp(seTop, se, G.sstep(0, a.up*0.35, dd));
+      addMesh(clothGroup, makeGrid(50, 40, armTube(a, -0.02, Math.min(p.sleeve, 2.02), sleeveEase), q => mapper.arm(s, q)), mat);
+      const ball = ellipsoidGeo(deltoidC(a), deltoidR(a, seTop + 0.002)); setUV(ball, q => mapper.arm(s, q));
+      addMesh(clothGroup, ball, mat);
+    }
+  }
+}
+function buildSkirt(g){
+  const p = g.p, lay = LAYER.skirt, H = B.H;
+  const yTop = Math.min(B.qToY(p.qTop), 0.66*H);
+  const yHem = G.clamp(B.qToY(p.qHem), 0.05*H, yTop - 0.05*H);
+  const rad = radShell({ ease:0.006+lay, easeMin:0.006+lay, yHem, hemHalf:p.hemHalf });
+  addMesh(clothGroup, shell(yHem, () => yTop, rad, q => mapper.torso(q.x, q.y)), clothMaterial(g));
+}
+function buildPants(g){
+  const p = g.p, H = B.H, mat = clothMaterial(g);
+  const yTop = Math.min(B.qToY(p.qTop), 0.66*H);
+  const easeFn = y => 0.006 + 0.6*p.easeThigh*(1 - G.sstep(0.47*H, 0.58*H, y));
+  addMesh(clothGroup, shell(B.torsoY0 + 0.01*H, () => yTop, radShell({ follow:true, easeFn }),
+    q => mapper.torso(q.x, q.y)), mat);
+  const xs = [-0.3, 0.35], ys = [p.easeThigh, p.easeThigh];
+  if (p.leg > 1){ xs.push(1); ys.push(p.easeKnee); }
+  xs.push(Math.max(p.leg, xs[xs.length-1] + 0.01)); ys.push(p.easeHem);
+  const legEase = pp => {
+    if (pp <= xs[0]) return ys[0] + 0.004;
+    if (pp >= xs[xs.length-1]) return ys[ys.length-1] + 0.004;
+    let i = 0; while (pp > xs[i+1]) i++;
+    return G.lerp(ys[i], ys[i+1], (pp-xs[i])/(xs[i+1]-xs[i])) + 0.004;
+  };
+  for (const s of [-1, 1])
+    addMesh(clothGroup, makeGrid(80, 40, legTube(B.legs[s], -0.2, p.leg, legEase), q => mapper.leg(s, q)), mat);
+}
+function buildShoes(g){
+  const mat = clothMaterial(g);
+  for (const s of [-1, 1]){
+    const f = B.feet[s];
+    addMesh(clothGroup, ellipsoidGeo(f.c, { x:f.r.x*1.18, y:f.r.y*1.12, z:f.r.z*1.1 }, null,
+      { w:32, h:16, theta:Math.PI*0.5 }), mat);
+  }
+}
+function buildHat(g){
+  const h = B.head;
+  addMesh(clothGroup, ellipsoidGeo({ x:h.c.x, y:h.c.y + 0.012*B.H, z:h.c.z },
+    { x:h.r.x*1.12, y:h.r.y*1.0, z:h.r.z*1.1 }, null, { theta: Math.PI*0.5 }), clothMaterial(g));
+}
+function buildBelt(g){
+  const low = garments.find(x => (x.type === 'pants' || x.type === 'skirt') && x.visible);
+  const yc = low ? Math.min(B.qToY(low.p.qTop), 0.66*B.H) - 0.006*B.H : B.waistY;
+  // üstte kalan kıyafetin de üzerine otursun
+  let e = 0.017;
+  for (const x of garments) if (x.visible && (x.type === 'upper' || x.type === 'dress') && B.qToY(x.p.qHem) < yc)
+    e = Math.max(e, x.p.ease + LAYER[x.type] + 0.007);
+  addMesh(clothGroup, shell(yc - 0.012*B.H, () => yc + 0.004*B.H, radShell({ follow:true, easeFn: () => e })),
+    clothMaterial(g));
+}
+const BUILD = { upper:buildUpperLike, dress:buildUpperLike, skirt:buildSkirt, pants:buildPants,
+                shoes:buildShoes, hat:buildHat, belt:buildBelt };
+
+function buildClothes(){
+  clearGroup(clothGroup);
+  if (!det) return;
+  mapper = G.makeMapper(det, B);
+  for (const g of garments) if (g.visible) BUILD[g.type](g);
+}
+let rebuildQ = false;
+function scheduleRebuild(){ if (!rebuildQ){ rebuildQ = true; requestAnimationFrame(() => { rebuildQ = false; buildClothes(); }); } }
+
+function makeTexture(labels){
+  const data = G.garmentPixels(det, labels);
+  const c = document.createElement('canvas'); c.width = det.W; c.height = det.H;
+  c.getContext('2d').putImageData(new ImageData(data, det.W, det.H), 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+
+/* ---------------- Kıyafet kartları ---------------- */
+const cm = v => Math.round(v*100);
+const fromFloor = q => 'yerden ' + cm(B.qToY(q)) + ' cm';
+const plus = v => '+' + (v*100).toFixed(1) + ' cm';
+const SLIDERS = {
+  upper: [
+    ['sleeve','Kol boyu',0,2.02,0.01, v => v < 0.04 ? 'kolsuz' : v < 0.55 ? 'çok kısa' : v < 1.15 ? 'kısa' : v < 1.7 ? 'üç çeyrek' : 'uzun'],
+    ['qHem','Boy',0.4,2.6,0.01, fromFloor],
+    ['qTop','Yaka',-0.45,0.6,0.01, v => { const d = B.neckBaseY - B.qToY(v); return d < -0.012*B.H ? 'boğazlı' : 'derinlik ' + Math.max(0, cm(d)) + ' cm'; }],
+    ['ease','Bolluk',0,0.08,0.001, plus],
+    ['sleeveEase','Kol bolluğu',0,0.06,0.001, plus],
+  ],
+  skirt: [
+    ['qTop','Bel',0.45,1,0.01, fromFloor],
+    ['qHem','Boy',1.05,3,0.01, fromFloor],
+    ['hemHalf','Etek ucu genişliği',0.12,0.7,0.005, v => cm(v*2) + ' cm'],
+  ],
+  pants: [
+    ['qTop','Bel',0.45,1,0.01, fromFloor],
+    ['leg','Paça boyu',0.25,2.08,0.01, v => 'yerden ' + cm(B.legs[1].yOf(v)) + ' cm'],
+    ['easeThigh','Üst bacak bolluğu',0,0.14,0.001, plus],
+    ['easeKnee','Diz bolluğu',0,0.14,0.001, plus],
+    ['easeHem','Paça genişliği',0,0.16,0.001, plus],
+  ],
+};
+SLIDERS.dress = [...SLIDERS.upper, ['hemHalf','Etek ucu genişliği',0.12,0.7,0.005, v => cm(v*2) + ' cm']];
+SLIDERS.dress[1] = ['qHem','Boy',1.05,3,0.01, fromFloor];
+
+function garmentName(g){
+  const p = g.p;
+  if (g.type === 'upper') return (p.sleeve < 0.04 ? 'Kolsuz üst' : p.sleeve < 1.15 ? 'Kısa kollu üst' : 'Uzun kollu üst') + (p.qHem > 1.35 ? ' (uzun)' : '');
+  if (g.type === 'dress') return (p.qHem < 1.7 ? 'Kısa elbise' : p.qHem < 2.35 ? 'Midi elbise' : 'Uzun elbise') + (p.sleeve < 0.04 ? ', kolsuz' : '');
+  if (g.type === 'skirt') return p.qHem < 1.7 ? 'Mini etek' : p.qHem < 2.35 ? 'Midi etek' : 'Uzun etek';
+  if (g.type === 'pants') return p.leg < 0.75 ? 'Şort' : p.leg < 1.6 ? 'Kapri pantolon' : 'Pantolon';
+  return { shoes:'Ayakkabı', hat:'Şapka', belt:'Kemer' }[g.type];
+}
+const ORDER = { hat:0, dress:1, upper:2, skirt:3, pants:4, belt:5, shoes:6 };
+function renderCards(){
+  const box = $('garments');
+  if (!garments.length){
+    box.innerHTML = det ? '<p class="empty">Bu fotoğrafta kıyafet bulunamadı. Kişinin tüm vücudunun net göründüğü bir fotoğraf dene.</p>'
+                        : '<p class="empty">Henüz fotoğraf yok. Fotoğraf yüklediğinde bulunan her kıyafet burada ayarlarıyla listelenir.</p>';
+    return;
+  }
+  box.innerHTML = '';
+  garments.forEach(g => {
+    const card = document.createElement('div'); card.className = 'card' + (g.visible ? '' : ' off');
+    const hex = '#' + srgb(g.color).getHexString(THREE.SRGBColorSpace);
+    card.innerHTML = `<div class="hd"><i class="sw" style="background:${hex}"></i><span class="nm"></span>
+      <label><input type="checkbox" ${g.visible ? 'checked' : ''}> Giy</label></div><div class="bd"></div>`;
+    const nm = card.querySelector('.nm'); nm.textContent = garmentName(g);
+    card.querySelector('input').addEventListener('change', e => {
+      g.visible = e.target.checked; card.classList.toggle('off', !g.visible); scheduleRebuild();
+    });
+    const bd = card.querySelector('.bd');
+    for (const [k, label, mn, mx, st, fmt] of (SLIDERS[g.type] || [])){
+      if (g.p[k] == null) continue;
+      const lab = document.createElement('label'); lab.className = 'row';
+      lab.innerHTML = `${label} <span></span>`;
+      const r = document.createElement('input'); r.type = 'range'; r.min = mn; r.max = mx; r.step = st; r.value = g.p[k];
+      const upd = () => { lab.querySelector('span').textContent = fmt(+r.value); };
+      r.addEventListener('input', () => { g.p[k] = +r.value; upd(); nm.textContent = garmentName(g); scheduleRebuild(); });
+      upd(); bd.append(lab, r);
+    }
+    box.append(card);
+  });
+}
+$('backPlain').addEventListener('change', e => {
+  opt.backPlain = e.target.checked;
+  for (const g of garments) if (g.mat) g.mat.userData.u.uPlain.value = opt.backPlain ? 1 : 0;
+});
+
+/* ---------------- Ölçü arayüzü ---------------- */
+function renderMeasures(){
+  const box = $('measures'); box.innerHTML = '';
+  for (const [k, label, mn, mx] of MEAS){
+    const lab = document.createElement('label'); lab.className = 'row';
+    lab.innerHTML = `${label} <span>${M[k]} cm</span>`;
+    const r = document.createElement('input'); r.type = 'range'; r.min = mn; r.max = mx; r.step = 1; r.value = M[k];
+    r.addEventListener('input', () => { M[k] = +r.value; lab.querySelector('span').textContent = M[k] + ' cm'; bodyChanged(); });
+    box.append(lab, r);
+  }
+}
+let bodyQ = false;
+function bodyChanged(){
+  try { localStorage.setItem('manken-olcu', JSON.stringify(M)); } catch(e){}
+  if (bodyQ) return; bodyQ = true;
+  requestAnimationFrame(() => {
+    bodyQ = false; B = G.makeBody(M); buildBody(); buildClothes(); renderCards();
+  });
+}
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  M = { ...PRESETS[b.dataset.preset] }; renderMeasures(); bodyChanged();
+  requestAnimationFrame(fitCamera);
+}));
+
+/* ---------------- Yapay zekâ: poz + kıyafet ayrıştırma ---------------- */
+const AI = { pose:null, seg:null };
+function aiMsg(text, frac, err){
+  const el = $('ai'); el.className = 'show' + (err ? ' err' : '');
+  $('aiText').textContent = text;
+  $('aiBar').parentElement.style.display = frac == null ? 'none' : '';
+  if (frac != null) $('aiBar').style.width = Math.round(frac*100) + '%';
+}
+async function ensureAI(){
+  if (!AI.pose){
+    aiMsg('Poz modeli yükleniyor…', null);
+    const V = await import(MP + '/vision_bundle.mjs');
+    const files = await V.FilesetResolver.forVisionTasks(MP + '/wasm');
+    const o = d => ({ baseOptions:{ modelAssetPath: POSE_MODEL, delegate:d }, runningMode:'IMAGE', numPoses:1 });
+    try { AI.pose = await V.PoseLandmarker.createFromOptions(files, o('GPU')); }
+    catch(e){ AI.pose = await V.PoseLandmarker.createFromOptions(files, o('CPU')); }
+  }
+  if (!AI.seg){
+    aiMsg('Kıyafet tanıma modeli indiriliyor (yalnızca ilk sefer)…', 0);
+    const T = await import(TF);
+    T.env.allowLocalModels = false;
+    const prog = {};
+    AI.seg = await T.pipeline('image-segmentation', SEG_MODEL, { dtype:'q8', progress_callback: d => {
+      if (d.status === 'progress' && d.total){
+        prog[d.file] = [d.loaded, d.total];
+        let l = 0, t = 0; for (const k in prog){ l += prog[k][0]; t += prog[k][1]; }
+        aiMsg('Kıyafet tanıma modeli indiriliyor (yalnızca ilk sefer)… ' + Math.round(l/1048576) + ' / ' + Math.round(t/1048576) + ' MB', l/t);
+      }
+    }});
+  }
+}
+
+const LBL_COLOR = { 1:'#ffb300', 4:'#e53935', 5:'#8e24aa', 6:'#1e88e5', 7:'#d81b60', 8:'#fdd835', 9:'#43a047', 10:'#43a047' };
+const LBL_NAME = { 1:'şapka', 4:'üst', 5:'etek', 6:'pantolon', 7:'elbise', 8:'kemer', 9:'ayakkabı' };
+function drawOverlay(){
+  const pv = $('preview'), ctx = pv.getContext('2d');
+  pv.width = det.W; pv.height = det.H;
+  ctx.drawImage(det.canvas, 0, 0);
+  const img = ctx.getImageData(0, 0, det.W, det.H), d = img.data, seen = new Set();
+  const rgb = {}; for (const k in LBL_COLOR){ const c = new THREE.Color(LBL_COLOR[k]).convertLinearToSRGB(); rgb[k] = [c.r*255, c.g*255, c.b*255]; }
+  for (let i=0; i<det.W*det.H; i++){
+    const c = rgb[det.L[i]]; if (!c) continue; seen.add(det.L[i] === 10 ? 9 : det.L[i]);
+    d[i*4] = d[i*4]*0.45 + c[0]*0.55; d[i*4+1] = d[i*4+1]*0.45 + c[1]*0.55; d[i*4+2] = d[i*4+2]*0.45 + c[2]*0.55;
+  }
+  ctx.putImageData(img, 0, 0);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(2, det.W/220); ctx.lineCap = 'round';
+  const P = i => det.lm[i];
+  for (const [a,b] of [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]]){
+    ctx.beginPath(); ctx.moveTo(P(a).x, P(a).y); ctx.lineTo(P(b).x, P(b).y); ctx.stroke();
+  }
+  $('legend').innerHTML = [...seen].map(k => `<span><i style="background:${LBL_COLOR[k]}"></i>${LBL_NAME[k]}</span>`).join('');
+}
+
+let busy = false, again = false;
+async function analyzePhoto(){
+  const canvas = window.__photo; if (!canvas) return;
+  if (busy){ again = true; return; }
+  busy = true;
+  try {
+    await ensureAI();
+    const W = canvas.width, H = canvas.height;
+    aiMsg('Vücut noktaları bulunuyor…', null);
+    const pr = AI.pose.detect(canvas);
+    const lms = (pr.landmarks || pr.poseLandmarks || [])[0];
+    if (!lms) throw new Error('KISI');
+    aiMsg('Kıyafetler ayrıştırılıyor…', null);
+    await new Promise(r => setTimeout(r, 30));
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
+    const url = URL.createObjectURL(blob);
+    let segs; try { segs = await AI.seg(url); } finally { URL.revokeObjectURL(url); }
+    const L = new Uint8Array(W*H);
+    for (const s of segs){
+      const id = G.LABELS.indexOf(s.label); if (id <= 0) continue;
+      const m = s.mask, ch = m.channels || 1, sx = m.width/W, sy = m.height/H;
+      for (let y=0; y<H; y++){
+        const my = Math.min(m.height-1, Math.floor(y*sy));
+        for (let x=0; x<W; x++){
+          const mx = Math.min(m.width-1, Math.floor(x*sx));
+          if (m.data[(my*m.width+mx)*ch] > 127) L[y*W+x] = id;
+        }
+      }
+    }
+    const px = canvas.getContext('2d').getImageData(0, 0, W, H).data;
+    for (const g of garments){ if (g.tex) g.tex.dispose(); if (g.mat) g.mat.dispose(); }
+    det = { W, H, L, px, canvas, lm: lms.map(p => ({ x:p.x*W, y:p.y*H, v:p.visibility })) };
+    aiMsg('Kıyafetler bedene uyarlanıyor…', null);
+    await new Promise(r => setTimeout(r, 30));
+    garments = G.detect(det, B).sort((a,b) => ORDER[a.type] - ORDER[b.type]);
+    for (const g of garments){
+      g.visible = true;
+      if (['upper','dress','skirt','pants'].includes(g.type)) g.tex = makeTexture(g.set);
+    }
+    drawOverlay(); buildClothes(); renderCards(); setView('front');
+    aiMsg(garments.length ? garments.length + ' parça bulundu ve giydirildi. Aşağıdan ayarlayabilirsin.'
+                          : 'Kıyafet bulunamadı.', null);
+  } catch (e){
+    console.error(e);
+    aiMsg(e.message === 'KISI'
+      ? 'Fotoğrafta kişi bulunamadı. Tüm vücudun karşıdan göründüğü bir fotoğraf dene.'
+      : 'Algılama sırasında hata oldu: ' + (e.message || e) + '. İnternet bağlantını kontrol edip tekrar dene.', null, true);
+  } finally {
+    busy = false;
+    if (again){ again = false; analyzePhoto(); }
+  }
+}
+document.addEventListener('photo-ready', analyzePhoto);
+document.addEventListener('photo-clear', () => {
+  for (const g of garments){ if (g.tex) g.tex.dispose(); if (g.mat) g.mat.dispose(); }
+  det = null; garments = []; clearGroup(clothGroup); renderCards();
+  $('legend').innerHTML = ''; $('ai').className = '';
+});
+
+/* ---------------- Kamera ---------------- */
+let spinning = false, anim = null;
+function fitCamera(){
+  controls.target.set(0, 0.025 + B.H*0.52, 0);
+  camera.position.set(0, controls.target.y + 0.1, B.H*2.5);
+}
+function setView(v){
+  const d = camera.position.distanceTo(controls.target);
+  const ang = { front:0, side:Math.PI/2, back:Math.PI }[v];
+  const from = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+  const delta = ((ang - from + Math.PI*3) % (Math.PI*2)) - Math.PI;
+  const y0 = camera.position.y, y1 = controls.target.y + 0.1, t0 = performance.now();
+  anim = now => {
+    const t = Math.min(1, (now - t0)/600), e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+    const a = from + delta*e, yy = y0 + (y1-y0)*e;
+    const flat = Math.sqrt(Math.max(0.01, d*d - (yy - controls.target.y)**2));
+    camera.position.set(controls.target.x + Math.sin(a)*flat, yy, controls.target.z + Math.cos(a)*flat);
+    if (t >= 1) anim = null;
+  };
+}
+document.querySelectorAll('#views button').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.view === 'spin'){ spinning = !spinning; b.style.background = spinning ? 'var(--accent-soft)' : ''; return; }
+  spinning = false; $('spinBtn').style.background = ''; setView(b.dataset.view);
+}));
+$('toggle').addEventListener('click', () => { $('app').classList.toggle('collapsed'); setTimeout(resize, 30); });
+$('shot').addEventListener('click', () => {
+  renderer.render(scene, camera);
+  const a = document.createElement('a'); a.download = 'manken.png';
+  a.href = renderer.domElement.toDataURL('image/png'); a.click();
+});
+
+/* ---------------- Başlat ---------------- */
+function resize(){
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+renderMeasures(); buildBody(); renderCards(); fitCamera(); resize();
+window.__3dReady = true;
+$('loading').remove(); window.hideStatus();
+renderer.setAnimationLoop(now => {
+  if (anim) anim(now);
+  if (spinning){
+    const off = camera.position.clone().sub(controls.target);
+    off.applyAxisAngle(new THREE.Vector3(0,1,0), 0.008);
+    camera.position.copy(controls.target).add(off);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+});
+if (window.__photo) analyzePhoto();
+</script>
+</body>
+</html>
